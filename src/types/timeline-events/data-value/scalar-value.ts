@@ -16,6 +16,10 @@ export class ScalarValue extends BaseValue {
 		return this.add(new ScalarValue(-aValue.value, aValue.unit));
 	}
 
+	clone(): ScalarValue {
+		return new ScalarValue(this.value, this.unit);
+	}
+
 	toString(): string {
 		return `${this.value}`;
 	}

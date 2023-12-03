@@ -46,6 +46,10 @@ export class TimeDurationValue extends BaseValue {
 		return this.add(new TimeDurationValue(-aValue.value, aValue.unit));
 	}
 
+	clone(): TimeDurationValue {
+		return new TimeDurationValue(this.value, this.unit);
+	}
+
 	/** 转换为分钟 */
 	toMinTimeDurationValue() {
 		const factor = this.getFactor(this.unit as TimeDurationUnit);

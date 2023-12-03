@@ -1,6 +1,6 @@
 import { Notice } from 'obsidian';
 import type { DataviewApi } from 'obsidian-dataview';
-import type { ITimelineEventItemParsed } from '../../types';
+import type { BaseValue, ITimelineEventItemParsed } from '../../types';
 import type { EChartsOption } from 'echarts';
 import dayjs from 'dayjs';
 import { TimeDurationUnit, TimeDurationValue } from '../../types';
@@ -97,6 +97,9 @@ function getGroupBy(
 	}
 }
 
+/**
+ * 收集所有的项目，并采用wallterfall类型的图表展示
+ */
 export async function projectProcessingReportAll(
 	dv: DataviewApi,
 	container: HTMLElement,
@@ -214,7 +217,8 @@ function draw(
 ) {
 	const { debug = false } = opt || {};
 	const xAxis = Object.keys(group).sort();
-	const yValue = xAxis.map(key => {
+	// 输入(时间)
+	const timeCosts = xAxis.map(key => {
 		const events = group[key] || [];
 		return events.reduce<TimeDurationValue>(
 			(accu: TimeDurationValue, curr) => {
@@ -226,24 +230,63 @@ function draw(
 		);
 	});
 
-	let sumY: TimeDurationValue = new TimeDurationValue(
+	// 输出
+	const values = xAxis.map(key => {
+		const events = group[key] || [];
+		const accuValue = events.reduce((accu, curr) => {
+			const res = {
+				...accu,
+			};
+
+			if (res.value && curr.value) {
+				res.value = res.value.add(curr.value);
+			}
+
+			return res;
+		}).value!;
+		return accuValue;
+	});
+
+	let timeCostSumY: TimeDurationValue = new TimeDurationValue(
 		0,
 		TimeDurationUnit.Minute,
 	);
-	const stackY: TimeDurationValue[] = [sumY];
+	const timeCostStackY: TimeDurationValue[] = [timeCostSumY];
+	for (let index = 0; index < timeCosts.length - 1; index++) {
+		timeCostSumY = timeCostSumY.add(timeCosts[index]);
+		timeCostStackY.push(timeCostSumY);
+	}
 
-	for (let index = 0; index < yValue.length - 1; index++) {
-		sumY = sumY.add(yValue[index]);
-		stackY.push(sumY);
+	// 值
+	let valueSumY: BaseValue | undefined;
+	if (values[0]) {
+		valueSumY = values[0].clone();
+		valueSumY.value = 0;
+	}
+	const valueStackY: BaseValue[] = valueSumY ? [valueSumY] : [];
+	for (let index = 0; index < values.length - 1; index++) {
+		if (valueSumY) {
+			valueSumY = valueSumY.add(values[index]);
+			valueStackY.push(valueSumY);
+		}
 	}
 
 	if (debug) {
-		console.log('yValue', yValue, 'xAxis', xAxis, 'stackY', stackY);
+		console.log(
+			'timeCosts',
+			timeCosts,
+			'timeCostStackY',
+			timeCostStackY,
+			'values',
+			values,
+			'valueStackY',
+			valueStackY,
+		);
 	}
 
 	const options: EChartsOption = {
 		title: {
-			text: `${name}:单位:${yValue[0]?.unit}`,
+			text: `${name}:单位:${timeCosts[0]?.unit}`,
 		},
 		tooltip: {
 			trigger: 'axis',
@@ -251,6 +294,7 @@ function draw(
 				type: 'shadow',
 			},
 			formatter: function (params) {
+				console.log('params', params);
 				let tar;
 				// @ts-ignore
 				if (params[1] && params[1].value !== '-') {
@@ -264,7 +308,7 @@ function draw(
 			},
 		},
 		legend: {
-			data: ['timeCost'],
+			data: ['value'],
 		},
 		grid: {
 			left: '3%',
@@ -276,38 +320,79 @@ function draw(
 			type: 'category',
 			data: xAxis,
 		},
-		yAxis: {
-			type: 'value',
-		},
-		series: [
+		yAxis: [
 			{
-				name: 'Placeholder',
-				type: 'bar',
-				stack: 'Total',
-				silent: true,
-				itemStyle: {
-					borderColor: 'transparent',
-					color: 'transparent',
-				},
-				emphasis: {
-					itemStyle: {
-						borderColor: 'transparent',
-						color: 'transparent',
-					},
-				},
-				data: stackY.map(item => item.value),
+				type: 'value',
 			},
 			{
-				name: 'timeCost',
-				type: 'bar',
-				stack: 'Total',
-				label: {
-					show: true,
-					position: 'top',
-				},
-				data: yValue.map(item => item.value),
+				type: 'value',
 			},
 		],
+		// @ts-ignore
+		series: [
+			// {
+			// 	name: 'Placeholder',
+			// 	type: 'bar',
+			// 	stack: 'Total',
+			// 	silent: true,
+			// 	itemStyle: {
+			// 		borderColor: 'transparent',
+			// 		color: 'transparent',
+			// 	},
+			// 	emphasis: {
+			// 		itemStyle: {
+			// 			borderColor: 'transparent',
+			// 			color: 'transparent',
+			// 		},
+			// 	},
+			// 	data: timeCostStackY.map(item => item.value),
+			// 	yAxisIndex: 0,
+			// },
+			// {
+			// 	name: 'timeCost',
+			// 	type: 'bar',
+			// 	stack: 'Total',
+			// 	label: {
+			// 		show: true,
+			// 		position: 'top',
+			// 	},
+			// 	data: timeCosts.map(item => item.value),
+			// 	yAxisIndex: 0,
+			// },
+			valueSumY
+				? {
+						name: 'Placeholder-1',
+						type: 'bar',
+						stack: 'Total-1',
+						silent: true,
+						itemStyle: {
+							borderColor: 'transparent',
+							color: 'transparent',
+						},
+						emphasis: {
+							itemStyle: {
+								borderColor: 'transparent',
+								color: 'transparent',
+							},
+						},
+						data: valueStackY.map(item => item.value),
+						yAxisIndex: 0,
+				  }
+				: false,
+			valueSumY
+				? {
+						name: 'value',
+						type: 'bar',
+						stack: 'Total-1',
+						label: {
+							show: true,
+							position: 'top',
+						},
+						data: values.map(item => item.value),
+						yAxisIndex: 0,
+				  }
+				: false,
+		].filter(Boolean),
 	};
 
 	if (debug) {

@@ -12,7 +12,10 @@ import {
 	pageDistributeByRootFolder,
 	tagDistribute,
 } from 'src/api/ob-vault-reporter';
-import { projectProcessingReportAll } from './api/project-reporter';
+import {
+	projectOverview,
+	projectProcessingReportAll,
+} from './api/project-reporter';
 import './config/dayjs';
 
 // Remember to rename these classes and interfaces!
@@ -39,6 +42,7 @@ export default class MyChartPlugin extends Plugin {
 		tagDistribute: tagDistribute,
 		// project report
 		projectProcessingReportAll: projectProcessingReportAll,
+		projectOverview: projectOverview,
 	};
 
 	async loadSettings() {
