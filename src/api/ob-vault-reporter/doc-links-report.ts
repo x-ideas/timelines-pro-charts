@@ -125,7 +125,7 @@ export function docsReport(dv: DataviewApi, container: HTMLElement) {
 	// 	option,
 	// };
 
-	echartPlugin.render(container, option);
+	echartPlugin['render'](option, container);
 }
 
 function getVaultDocLinkFactor(dv: DataviewApi) {
