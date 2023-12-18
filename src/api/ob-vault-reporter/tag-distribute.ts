@@ -9,6 +9,11 @@ interface IOptions {
 
 /**
  * 标签分布-词云的形式
+ * @example
+ * ```dataviewjs
+ * 	const proChartsApi = dv.app.plugins.plugins['timelines-pro-charts'].api;
+ * 	proChartsApi.tagDistribute(dv, this.container, {})
+ * ```
  */
 export function tagDistribute(
 	dv: DataviewApi,

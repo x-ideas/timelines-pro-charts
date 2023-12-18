@@ -1,5 +1,4 @@
 import type { DataviewApi, Literal } from 'obsidian-dataview';
-import { Notice } from 'obsidian';
 import type { DVPage } from 'src/types';
 import dayjs from 'dayjs';
 

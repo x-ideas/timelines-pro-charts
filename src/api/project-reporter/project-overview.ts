@@ -2,7 +2,7 @@ import { Notice, moment } from 'obsidian';
 import type { DataviewApi } from 'obsidian-dataview';
 import type { ITimelineEventItemParsed } from 'src/types';
 
-interface IProjectOverviewOpt {
+interface IactivityEventOverviewOpt {
 	debug?: boolean;
 
 	/**
@@ -15,13 +15,17 @@ interface IProjectOverviewOpt {
 	dateEnd?: string;
 }
 
+interface IGroupedProjectEvents {
+	[projectTag: string]: ITimelineEventItemParsed[];
+}
+
 /**
- * project项目概览
+ * project概览()
  */
-export function projectOverview(
+export async function projectOverview(
 	dv: DataviewApi,
 	container: HTMLElement,
-	opt?: IProjectOverviewOpt,
+	opt?: IactivityEventOverviewOpt,
 ) {
 	const { debug = false } = opt || {};
 
@@ -53,31 +57,69 @@ export function projectOverview(
 		? moment(opt.dateEnd).endOf('day').format('YYYY/MM/DD')
 		: moment(dateStart.valueOf()).endOf('week').format('YYYY/MM/DD');
 
-	searchTimelineEvents({
+	const res: ITimelineEventItemParsed[] = await searchTimelineEvents({
+		eventTags: 'Projects',
 		dateStart: dateStart,
 		dateEnd: dateEnd,
-	})
-		.then((res: ITimelineEventItemParsed[]) => {
-			dv.table(
-				['file', 'title', 'timeCost', 'value', '项目标签'],
-				res.map(item => {
-					return [
-						dv.fileLink(item.file.path),
-						item.title,
-						item.timeCost.toString(),
-						item.value.toString(),
-						item.parsedEventTags
-							.filter(item => {
-								return item.includes('Projects');
-							})
-							.join('\n'),
-					];
-				}),
-			);
-			// 统计Project
-		})
-		.catch((error: Error) => {
-			new Notice(error.message || '查询出错');
-			console.error(error);
+	});
+
+	if (debug) {
+		console.log('查找到的结果', res);
+	}
+
+	// 根据名字分组
+	const groupedProjectEvents: IGroupedProjectEvents = {};
+	// 类型查看timeline-pro的事件定义
+	res.forEach((item: ITimelineEventItemParsed) => {
+		const eventTags = item.parsedEventTags || [];
+		const projectTags = eventTags.filter((tag: string) =>
+			tag.startsWith('Project'),
+		);
+		for (const tag of projectTags) {
+			const events = groupedProjectEvents[tag];
+			if (events) {
+				events.push(item);
+			} else {
+				groupedProjectEvents[tag] = [item];
+			}
+		}
+	});
+
+	if (debug) {
+		console.log('分组后的结果', groupedProjectEvents);
+	}
+
+	Object.keys(groupedProjectEvents)
+		.sort()
+		.forEach(tag => {
+			const events = groupedProjectEvents[tag];
+
+			//
+
+			projectProcessingReport(dv, divContainer, tag, events, opt);
 		});
+
+	// .then((res: ITimelineEventItemParsed[]) => {
+	// 	dv.table(
+	// 		['file', 'title', 'timeCost', 'value', '项目标签'],
+	// 		res.map(item => {
+	// 			return [
+	// 				dv.fileLink(item.file.path),
+	// 				item.title,
+	// 				item.timeCost.toString(),
+	// 				item.value.toString(),
+	// 				item.parsedEventTags
+	// 					.filter(item => {
+	// 						return item.includes('Projects');
+	// 					})
+	// 					.join('\n'),
+	// 			];
+	// 		}),
+	// 	);
+	// 	// 统计Project
+	// })
+	// .catch((error: Error) => {
+	// 	new Notice(error.message || '查询出错');
+	// 	console.error(error);
+	// });
 }

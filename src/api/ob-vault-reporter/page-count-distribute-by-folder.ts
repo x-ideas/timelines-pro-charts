@@ -1,7 +1,9 @@
 import { Notice } from 'obsidian';
 import type { DataviewApi } from 'obsidian-dataview';
 
-/** 文件夹下的文件数量分布 */
+/** 文件夹下的文件数量分布
+ * @example
+ */
 export function pageCountDistributeByFolder(
 	dv: DataviewApi,
 	container: HTMLElement,
